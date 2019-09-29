@@ -10,5 +10,6 @@ return [
     'room_list'=> 'user:room:list',        //用户进入房间队列
     'user_room_no' => 'user:room:no',         //用户自增房间号
     'user_room' => 'user:room:map:%s',        //用户和房间映射关系
-    'user_room_data' => 'user:room:data:%s',  //用户游戏数据
+    'user_room_data' => 'user:room:data:%s',  //用户游戏房间数据
+    'user_room_play' => 'user:room:play:%s',  //用户游戏房间打牌步骤数据
 ];

@@ -171,7 +171,7 @@ use App\Game\Core\DdzPoker;
      }
 
      /**
-      * 设置房间信息
+      * 设置房间用户玩牌信息
       * @param $account
       * @param $key
       * @param $value
@@ -275,6 +275,22 @@ use App\Game\Core\DdzPoker;
              return $conf[$key];
          } else {
              return '';
+         }
+     }
+
+     /**
+      * 设置游戏房间玩牌步骤信息, 方便后面录像回放
+      * @param $account
+      * @param $key
+      * @param $value
+      */
+     protected function setRoomPlayCardStep($account, $key, $value)
+     {
+         $no = $this->getRoomNo($account);
+         $game_key = $this->getGameConf('user_room_play');
+         if($no && $game_key) {
+             $play_key = sprintf($game_key, $no);;
+             Redis::hSet($play_key, $key, $value);
          }
      }
 }

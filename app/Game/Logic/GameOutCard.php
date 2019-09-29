@@ -126,7 +126,7 @@ class GameOutCard extends AStrategy
             'is_game_over' => $is_game_over        //游戏是否结束
         );
         //记录一下出牌数据, 记录没步骤录像数据
-        $this->setRoomData($account, 'step_'.$hand, json_encode($step));
+        $this->setRoomPlayCardStep($account, 'step_'.$hand, json_encode($step));
         //广播打牌结果
         $ret =  $this->gameOutCardResp($this->_params['serv'], $account, $step);
         //游戏结束, 重置游戏数据
