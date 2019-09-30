@@ -52,6 +52,9 @@ class GameOutCard extends AStrategy
         //根据椅子查询手牌信息
         $my_card = json_decode($user_room_data[$account], true);
 
+        //出牌牌型
+        $card_type = '无';
+
         //验证出牌数据
         if($out_cards['status'] == 1) {
             if(count($out_cards['card']) == 0) {
@@ -65,6 +68,8 @@ class GameOutCard extends AStrategy
                 $arr = $this->obj_ddz->checkCardType($out_cards['card']);
                 if($arr['type'] == 0) {
                     return $this->gameOutCard(array('status'=>3, 'msg'=>'出牌非法, 牌型有误'));
+                } else {
+                    $card_type = $arr['type_msg'];
                 }
                 //如果非首轮牌, 请验证牌型, 并判断牌型是否一直, 如果打出的牌型是, 炸弹和飞机, 跳过验证, 13表示炸弹,14表示飞机
                 if($last_card_type > 0 && !in_array($arr['type'], array(13,14)) && $last_card_type != $arr['type']) {
@@ -122,6 +127,7 @@ class GameOutCard extends AStrategy
             'next_chair_id'=>$next_chair_id,   //下一个出牌的椅子id
             'is_first_round'=>$is_first_round,  //是否为首轮, 下一个出牌人的情况
             'card'=>$out_cards['card'],        //本次出牌
+            'card_type' => $card_type,          //显示牌型
             'last_card'=>json_decode($last_card, true),          //上次最大牌
             'is_game_over' => $is_game_over        //游戏是否结束
         );
@@ -280,6 +286,6 @@ class GameOutCard extends AStrategy
         $data = Packet::packEncode($data, MainCmd::CMD_GAME, SubCmd::SUB_GAME_OUT_CARD_RESP);
         $this->pushToUsers($serv, $this->getRoomFds($account), $data);
         //并提示成功
-        return $this->gameOutCard(array('status'=>0, 'msg'=>'出牌成功'));
+        return $this->gameOutCard(array('status'=>0, 'msg'=>'出牌成功', 'data'=>$param));
     }
 }

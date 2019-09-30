@@ -164,11 +164,15 @@ var Resp = {
 			document.getElementById('chair_3').innerHTML  =  '';
 			document.getElementById('last_card').innerHTML = '';
 			document.getElementById('out_card').innerHTML = '';
-
+			document.getElementById('play').disabled = true;
+			document.getElementById('pass').disabled = true;
 		} else {
 			this.log(data);
 			var play = data.show_type == 1 ? '跟牌' : '过牌';
-			this.showTips('广播: 第'+data.round+'回合,第'+data.hand_num+'手出牌, '+data.account+play+', 上次牌值是'+data.last_card+', 本次出牌值是'+data.card);
+			if(data.last_card.length < 1) {
+				play = '出牌';
+			} 
+			this.showTips('广播: 第'+data.round+'回合,第'+data.hand_num+'手出牌, '+data.account+play+', 上次牌值是'+data.last_card+', 本次出牌值是'+data.card+', 本次出牌型是'+data.card_type);
 			this.showPlayCard(data.last_card,data.card); 
 
 			//自己出牌按钮变灰

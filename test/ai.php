@@ -85,22 +85,10 @@ class Ai {
     public $hand_card = array();
 
     /**
-     * 打牌步骤
-     * @var int
+     * 房间信息
+     * @var array
      */
-    public $step = 1;
-
-    /**
-     * 当前出牌的椅子id
-     * @var int
-     */
-    public $current_chair_id = 0;
-
-    /**
-     * 当前牌型
-     * @var int
-     */
-    public $current_card_type = 0;
+    public $my_room_info = array();
 
     /**
      * 手牌对象
@@ -115,21 +103,22 @@ class Ai {
     public $route = array(
         //系统请求响应
         App\Game\Conf\MainCmd::CMD_SYS => array(
-            \App\Game\Conf\SubCmd::LOGIN_FAIL_RESP =>'loginFailResp',
-            \App\Game\Conf\SubCmd::LOGIN_SUCCESS_RESP =>'loginSucessResp',
-            \App\Game\Conf\SubCmd::HEART_ASK_RESP =>'heartAskResp',
-            \App\Game\Conf\SubCmd::ENTER_ROOM_FAIL_RESP =>'enterRoomFailResp',
-            \App\Game\Conf\SubCmd::ENTER_ROOM_SUCC_RESP =>'enterRoomSuccResp',
+            \App\Game\Conf\SubCmd::LOGIN_FAIL_RESP =>'loginFailResp',    //登录失败响应
+            \App\Game\Conf\SubCmd::LOGIN_SUCCESS_RESP =>'loginSucessResp',  //登录成功响应
+            \App\Game\Conf\SubCmd::HEART_ASK_RESP =>'heartAskResp',         //心跳响应
+            \App\Game\Conf\SubCmd::ENTER_ROOM_FAIL_RESP =>'enterRoomFailResp',  //进入房间失败响应
+            \App\Game\Conf\SubCmd::ENTER_ROOM_SUCC_RESP =>'enterRoomSuccResp',  //进入房间成功响应
         ),
         //游戏请求响应
         App\Game\Conf\MainCmd::CMD_GAME => array(
-            \App\Game\Conf\SubCmd::SUB_GAME_START_RESP =>'gameStartResp',
-            \App\Game\Conf\SubCmd::SUB_USER_INFO_RESP =>'userInfoResp',
-            \App\Game\Conf\SubCmd::CHAT_MSG_RESP =>'chatMsgResp',
-            \App\Game\Conf\SubCmd::SUB_GAME_CALL_TIPS_RESP =>'gameCallTipsResp',
-            \App\Game\Conf\SubCmd::SUB_GAME_CALL_RESP =>'callGameResp',
-            \App\Game\Conf\SubCmd::SUB_GAME_CATCH_BASECARD_RESP =>'catchGameCardResp',
-            \App\Game\Conf\SubCmd::SUB_GAME_OUT_CARD =>'gameOutCard',
+            \App\Game\Conf\SubCmd::SUB_GAME_START_RESP =>'gameStartResp',   //游戏开始响应
+            \App\Game\Conf\SubCmd::SUB_USER_INFO_RESP =>'userInfoResp',     //用户信息响应
+            \App\Game\Conf\SubCmd::CHAT_MSG_RESP =>'chatMsgResp',           //聊天,消息响应
+            \App\Game\Conf\SubCmd::SUB_GAME_CALL_TIPS_RESP =>'gameCallTipsResp',    //叫地主广播响应
+            \App\Game\Conf\SubCmd::SUB_GAME_CALL_RESP =>'gameCallResp',         //叫地主响应
+            \App\Game\Conf\SubCmd::SUB_GAME_CATCH_BASECARD_RESP =>'catchGameCardResp',  //摸牌广播响应
+            \App\Game\Conf\SubCmd::SUB_GAME_OUT_CARD =>'gameOutCard',   //出牌广播
+            \App\Game\Conf\SubCmd::SUB_GAME_OUT_CARD_RESP =>'gameOutCardResp',  //出牌响应
         ),
     );
 
@@ -172,8 +161,8 @@ class Ai {
                 //清除断线重连定时器, 断线重连次数重置为0
                 Swoole\Timer::clear($this->reback_timer);
                 $this->reback_count = 0;
-                $self->chatMsgReq($cli);
-                $self->heartAskReq($cli);
+//                $self->chatMsgReq($cli); //测试聊天请求
+                $self->heartAskReq($cli); //发送心跳
                 while (true) {
                     $ret = $self::onMessage($cli, $cli->recv());
                     if(!$ret) {
@@ -311,8 +300,21 @@ class Ai {
      */
     protected function gameStartReq($cli) {
         if($cli->connected) {
-            $msg = array('data' => 'this is a test msg');
+            $msg = array('data'=>'game start');
             $data = \App\Game\Core\Packet::packEncode($msg, \App\Game\Conf\MainCmd::CMD_GAME, \App\Game\Conf\SubCmd::SUB_GAME_START_REQ);
+            $cli->push($data, WEBSOCKET_OPCODE_BINARY);
+        }
+    }
+
+    /**
+     * 发送叫地主请求
+     * @param $cli
+     * @param int $status  0表示不叫地主, 1表示叫地主
+     */
+    protected function gameCallReq($cli, $status = 0) {
+        if($cli->connected) {
+            $data = array('type'=>$status);
+            $data = \App\Game\Core\Packet::packEncode($data, \App\Game\Conf\MainCmd::CMD_GAME, \App\Game\Conf\SubCmd::SUB_GAME_CALL_REQ);
             $cli->push($data, WEBSOCKET_OPCODE_BINARY);
         }
     }
@@ -331,32 +333,22 @@ class Ai {
             \App\Game\Core\Log::show("开始出牌:");
             if($is_first_round) {
                 $status = 1;
+                $card = array(array_pop($this->hand_card));
             } else {
-                $status = array_rand(array(1, 2));   //出牌状态随机
+                $status = 0;   //出牌状态随机
+                $card = array();
             }
-            if($status == 1) {
-                //跟牌, 从手牌中, 一张一张弹出牌来
-                $cards = array_shift($this->hand_card);
-                $card_type = 1;
-                $msg = array(
-                    'status' => $status, //打牌还是过牌, 1跟牌, 2是过牌
-                    'chair_id' => $this->chair_id,
-                    'card_type' => $card_type,
-                    'card' => array($cards),
-                );
-            } else {
-                //过牌
-                $msg = array(
-                    'status' => $status, //打牌还是过牌, 1跟牌, 2是过牌
-                    'chair_id' => $this->chair_id,
-                    'card_type' => 0,
-                    'card' => array(),
-                );
-            }
+            $msg = array(
+                'status' => $status, //打牌还是过牌, 1跟牌, 0是过牌
+                'chair_id' => $this->chair_id,
+                'card' => $card,
+            );
             $data = \App\Game\Core\Packet::packEncode($msg, \App\Game\Conf\MainCmd::CMD_GAME, \App\Game\Conf\SubCmd::SUB_GAME_OUT_CARD_REQ);
             $cli->push($data, WEBSOCKET_OPCODE_BINARY);
         }
     }
+
+
 
     /**
      * 响应登录失败
@@ -375,8 +367,8 @@ class Ai {
      */
     protected function loginSucessResp($cli, $data) {
         //登录成功, 开始游戏逻辑
+        \App\Game\Core\Log::show("登录成功, 开始游戏请求");
         $this->gameStartReq($cli);
-        \App\Game\Core\Log::show("登录成功, 并开始游戏请求");
     }
 
     /**
@@ -418,40 +410,45 @@ class Ai {
      * @param $cli
      */
     protected function enterRoomSuccResp($cli, $data) {
-        \App\Game\Core\Log::show('进入房间成功数据:'.json_encode($data));
-        //保存用户信息和手牌信息
-        $this->chair_id = $data['data']['chair_id'];
-        $this->hand_card = $data['data']['card'];
-        //根据自己的牌是否可以发送是否叫地主,  0,不叫, 1,叫地主, 2, 抢地主
-        $obj = new \App\Game\Core\DdzPoker();
-        $ret = $obj->isGoodCard($data['data']['card']);
-        if($ret) {
-            $status = 1;
+        if($data['is_game_over']) {
+            \App\Game\Core\Log::show('游戏结束');
+            //触发开始游戏
+            $this->gameStartReq($cli);
         } else {
-            $status = 0;
+            \App\Game\Core\Log::show('进入房间成功数据:'.json_encode($data));
+            //保存用户信息和手牌信息
+            $this->chair_id = $data['chair_id'];
+            $this->hand_card = $data['card'];
+            $this->my_room_info = $data;
+            //如果没有叫地主, 触发叫地主动作
+            if(!isset($data['calltype'])) {
+                //根据自己的牌是否可以发送是否叫地主,  0,不叫, 1,叫地主, 2, 抢地主
+                $obj = new \App\Game\Core\DdzPoker();
+                $ret = $obj->isGoodCard($this->hand_card);
+                $status = $ret ? 1 : 0;
+                //发送是否叫地主操作
+                $this->gameCallReq($cli, $status);
+            }
+            //是否轮到自己出牌, 如果是, 请出牌
+            if(isset($data['index_chair_id']) && $data['index_chair_id'] == $this->chair_id) {
+                if (isset($data['is_first_round']) && $data['is_first_round']) {
+                    //首轮出牌
+                    \App\Game\Core\Log::show('请出牌');
+                } else {
+                    //跟牌操作
+                    \App\Game\Core\Log::show('请跟牌');
+                }
+                $this->outCardReq($cli, $data['is_first_round']);
+            }
         }
-        //发送是否叫地主操作
-        $msg = array('type' => $status);
-        $data = \App\Game\Core\Packet::packEncode($msg, \App\Game\Conf\MainCmd::CMD_GAME, \App\Game\Conf\SubCmd::SUB_GAME_CALL_REQ);
-        $cli->push($data, WEBSOCKET_OPCODE_BINARY);
     }
 
     /**
-     * 叫完地主单条提示
+     * 自己叫完地主提示响应
      * @param $cli
      */
-    protected function callGameResp($cli, $data) {
-        \App\Game\Core\Log::show('叫地主提示:'.json_encode($data));
-        //如果地主一定产生, 请重新链接回来继续往下打牌逻辑, 如果发现是自己出牌, 请继续出牌
-        if(isset($data['master']) && isset($data['last_chair_id'])) {
-            $last_chair_id = $data['last_chair_id'];
-            $next_chair_id = $last_chair_id + 1;
-            $next_chair_id = $next_chair_id > 3 ? $next_chair_id - 3 : $next_chair_id;
-            //出牌请求
-            if($next_chair_id == $this->chair_id) {
-                $this->outCardReq($cli);
-            }
-        }
+    protected function gameCallResp($cli, $data) {
+        \App\Game\Core\Log::show('叫地主成功提示:'.json_encode($data));
     }
 
     /**
@@ -459,7 +456,8 @@ class Ai {
      * @param $cli
      */
     protected function gameCallTipsResp($cli, $data) {
-        \App\Game\Core\Log::show('叫地主提示:'.json_encode($data));
+       $tips = $data['calltype'] ? $data['account'].'叫地主' : $data['account'].'不叫';
+        \App\Game\Core\Log::show('广播叫地主提示:'.$tips);
     }
 
     /**
@@ -467,13 +465,14 @@ class Ai {
      * @param $cli
      */
     protected function catchGameCardResp($cli, $data) {
-        \App\Game\Core\Log::show('摸牌响应:'.json_encode($data));
+        $tips = $data['user'].'摸底牌'.$data['hand_card'];
+        \App\Game\Core\Log::show('摸底牌广播:'.$tips);
         if(isset($data['chair_id']) && $data['chair_id'] == $this->chair_id) {
             //合并手牌
             $hand_card = json_decode($data['hand_card'], true);
             $this->hand_card = $this->getDdzObj()->_sortCardByGrade(array_merge($this->hand_card, $hand_card));
             \App\Game\Core\Log::show('地主['.$this->account.']出牌:'.json_encode($this->hand_card));
-            //出牌请求
+            //地主首次出牌
             $this->outCardReq($cli, true);
         }
     }
@@ -484,16 +483,45 @@ class Ai {
      */
     protected function gameOutCard($cli, $data) {
         \App\Game\Core\Log::show('出牌提示:'.json_encode($data));
-        $show_type = array(
-            1=>'跟牌',
-            2=>'过牌'
-        );
-        $tips = $data['account'].$show_type[$data['show_type']] . ', 本次出牌椅子id是:'. $data['chair_id'] .'下一个出牌椅子id是:' . $data['next_chair_id'];
-        \App\Game\Core\Log::show('出牌提示:'.$tips);
+        //移除手牌
+        if(isset($data['status']) == 0 && isset($data['data']['card'])) {
+            $this->hand_card = array_unique(array_values(array_diff($this->hand_card, $data['data']['card'])));
+        }
+    }
 
-        if($this->chair_id == $data['next_chair_id']) {
-            //处理下一个出牌逻辑
-            $this->outCardReq($cli, $data['is_first_round']);
+    /**
+     * 出牌广播
+     * @param $cli
+     * @param $data
+     */
+    protected function gameOutCardResp($cli, $data) {
+        \App\Game\Core\Log::show('出牌广播提示:'.json_encode($data));
+        if(isset($data['is_game_over']) && $data['is_game_over']) {
+            $tips = '广播:游戏结束,'.$data['account'].'胜利, 请点击"开始游戏",进行下一轮游戏';
+            \App\Game\Core\Log::show($tips);
+            //触发开始游戏
+            $this->gameStartReq($cli);
+        } else {
+            $play = (isset($data['show_type']) && $data['show_type'] == 1) ? '跟牌': '过牌';
+            $play = (isset($data['last_card']) && empty($data['last_card'])) ? '出牌' : $play;
+            $last_card = !empty($data['last_card']) ? json_encode($data['last_card']) : '无';
+            $out_card =  !empty($data['card']) ? json_encode($data['card']) : '无';
+            $tips = '广播: 第'.$data['round'].'回合,第'.$data['hand_num'].'手出牌, '.$data['account'].$play.', 上次牌值是'.$last_card.', 本次出牌值是'.$out_card .', 本次出牌牌型'.$data['card_type'];
+            \App\Game\Core\Log::show($tips);
+            //下次出牌是否轮到自己, 轮到自己, 请出牌
+            if(isset($data['next_chair_id']) && $data['next_chair_id'] == $this->chair_id) {
+                //出牌请求, 默认过牌操作
+                if (isset($data['is_first_round']) && $data['is_first_round']) {
+                    //首轮出牌
+                    \App\Game\Core\Log::show('请出牌');
+                    //地主首次出牌
+                } else {
+                    //跟牌操作
+                    \App\Game\Core\Log::show('请跟牌');
+                    //地主首次出牌
+                }
+                $this->outCardReq($cli, $data['is_first_round']);
+            }
         }
     }
 

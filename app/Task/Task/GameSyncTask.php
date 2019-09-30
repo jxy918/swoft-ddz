@@ -101,7 +101,7 @@ class GameSyncTask
             //匹配失败， 请继续等待
             $msg = array(
                 'status'=>'fail',
-                'msg'=>'人数不够，进入房间失败!'
+                'msg'=>'人数不够3人，请耐心等待!'
             );
             $data = Packet::packFormat('OK', 0, $msg);
             $data = Packet::packEncode($data, MainCmd::CMD_SYS, SubCmd::ENTER_ROOM_FAIL_RESP);
