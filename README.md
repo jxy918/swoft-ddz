@@ -90,7 +90,7 @@ php bin/swoft ws:stop
 php ai.php  xxx   
 
 ```
- 
+> xxx 表示用户账号, 账号最好用英文加数字, 账号唯一就可以
 
 * 4，访问url:
 
