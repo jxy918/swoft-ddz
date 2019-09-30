@@ -117,6 +117,12 @@ class GameOutCard extends AStrategy
         $my_card = $this->setMyCard($user_room_data, $out_cards, $account);
         //判断游戏是否结束
         $is_game_over = (count($my_card['card']) < 1) ? true : false;
+        //计算下家牌是否能大过上一手牌
+//        $next_card = $this->findCardsByChairId($user_room_data, $next_chair_id);
+//        $prv_card =  (isset($out_cards['card']) && count($out_cards['card']) > 0) ? $out_cards['card'] : json_decode($last_card, true);
+//        $is_out_card = $this->obj_ddz->isPlayCard($next_card, $prv_card);
+//        var_dump($next_card, $prv_card, $is_out_card);
+
         //并下发出牌提示
         $step = array(
             'round'=>$round,       //轮次
@@ -131,6 +137,7 @@ class GameOutCard extends AStrategy
             'last_card'=>json_decode($last_card, true),          //上次最大牌
             'is_game_over' => $is_game_over        //游戏是否结束
         );
+
         //记录一下出牌数据, 记录没步骤录像数据
         $this->setRoomPlayCardStep($account, 'step_'.$hand, json_encode($step));
         //广播打牌结果
@@ -259,6 +266,25 @@ class GameOutCard extends AStrategy
         //写会redis
         $this->setRoomData($account, $account, json_encode($my_card));
         return $my_card;
+    }
+
+    /**
+     * 根据椅子id找出这个一直用户的手牌
+     * @param $user_room_data
+     * @param $chair_id
+     * @return array
+     */
+    protected function findCardsByChairId($user_room_data, $chair_id) {
+        $uinfo = json_decode($user_room_data['uinfo'], true);
+        $cards = array();
+        foreach($uinfo as $v) {
+            $d = json_decode($user_room_data[$v], true);
+            if(isset($d['chair_id']) && $d['chair_id'] == $chair_id) {
+                $cards = $d['card'];
+                break;
+            }
+        }
+        return $cards;
     }
 
     /**

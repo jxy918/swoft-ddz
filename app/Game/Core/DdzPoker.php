@@ -623,7 +623,6 @@ class DdzPoker
     /**
      * 是否可以出牌
      * @param $my_card
-     * @param $prev_type
      * @param $prev_card
      * @return bool
      */

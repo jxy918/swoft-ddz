@@ -326,15 +326,12 @@ class Ai {
      */
     protected function outCardReq($cli, $is_first_round = false) {
         if($cli->connected) {
-            //判断手牌是否能要的起, 如果要的起, 就打牌, 要不起就过牌
-//            $ddz = $this->getDdzObj();
-//            $ddz->isPlayCard($this->hand_card, $cur_card);
-
             \App\Game\Core\Log::show("开始出牌:");
             if($is_first_round) {
                 $status = 1;
-                $card = array(array_pop($this->hand_card));
+                $card = array(array_shift($this->hand_card));   //第一张牌, 打出去
             } else {
+                //跟牌默认过牌, TODO:需要实现跟牌逻辑, 需要从自己手牌中找出打过上次牌的牌, 根据情况决定是否跟牌
                 $status = 0;   //出牌状态随机
                 $card = array();
             }
