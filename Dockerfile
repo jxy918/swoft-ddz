@@ -11,7 +11,7 @@
 #
 FROM php:7.2
 
-LABEL maintainer="jxy918 <251413215@qq.com>" version="2.1"
+LABEL maintainer="jxy918 <251413215@qq.com>" version="2.3"
 
 # --build-arg timezone=Asia/Shanghai
 ARG timezone
@@ -23,7 +23,7 @@ ARG work_user=www-data
 ENV APP_ENV=${app_env:-"prod"} \
     TIMEZONE=${timezone:-"Asia/Shanghai"} \
     PHPREDIS_VERSION=4.3.0 \
-    SWOOLE_VERSION=4.4.3 \
+    SWOOLE_VERSION=4.4.17 \
     COMPOSER_ALLOW_SUPERUSER=1
 
 # Libs -y --no-install-recommends

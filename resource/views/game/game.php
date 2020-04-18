@@ -30,7 +30,7 @@ li{
     <h1>昵称:<?php echo $account;?><span id="master"></span></h1>
     <div >
         服务器链接:
-        <input id="url" value="ws://192.168.7.197:18308/game" >
+        <input id="url" value="ws://127.0.0.1:18308/game" >
         <input class="btn" type="button" value="连接" id="ConnBt" onclick="conn()">
     </div>
     <br>

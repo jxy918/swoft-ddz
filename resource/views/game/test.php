@@ -10,7 +10,7 @@
     <div >
         <tr>
             <td>服务器：</td>
-            <td><input style="HEIGHT: 21px; WIDTH: 400px" size="17" id="url" value="ws://192.168.7.197:18308/game" ></td>
+            <td><input style="HEIGHT: 21px; WIDTH: 400px" size="17" id="url" value="ws://127.0.0.1:18308/game" ></td>
             <td><input style="HEIGHT: 20px; WIDTH: 97px" size="98" type="button" value="连接" id="ConnBt" onclick="do_conn()"></td>
         </tr>
     </div>
