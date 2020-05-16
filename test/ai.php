@@ -4,11 +4,12 @@
  */
 require_once dirname(__DIR__) . '/vendor/autoload.php';
 
+
 class Ai {
     /**
      * 服务器ip
      */
-    const IP = '192.168.7.197';
+    const IP = '127.0.0.1';
     /**
      * 服务器端口
      */
@@ -148,7 +149,7 @@ class Ai {
      * 创建链接
      */
     protected function createConnection() {
-        go(function () {
+	go(function () {
             $cli = new \Swoole\Coroutine\Http\Client(self::IP, self::PORT);
             $cli->set($this->_setconfig);
             $cli->setHeaders($this->_header);
